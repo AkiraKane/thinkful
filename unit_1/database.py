@@ -11,7 +11,12 @@ def read_migration_file():
         for line in dump:
             yield line
 
-
+def fetch_data(cursor):
+    cursor.execute("SELECT c.* FROM cities c " +
+                   "INNER JOIN weather w ON name = city "
+                   "WHERE w.warm_month='July' " +
+                   "ORDER BY c.name, c.state;")
+    return cursor.fetchall()
 
 
 if __name__ == '__main__':
@@ -21,6 +26,10 @@ if __name__ == '__main__':
     with conn:
         cur = conn.cursor()
         load_data(cur)
+
+        print( "The cities that are warmest in July are:")
+        for row in fetch_data(cur):
+            print("%s, %s" % (row[0], row[1]))
 
 
 
