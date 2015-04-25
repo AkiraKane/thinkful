@@ -15,6 +15,17 @@ def fetch_data_frame():
     loans_data.dropna(inplace=True)
     return loans_data
 
+def fetch_and_prep_data_frame():
+    """
+    A convenience method to clean the data before use
+    :return: a pandas data frame
+    """
+    loans_data = fetch_data_frame()
+    scrub_interest_rate(loans_data)
+    add_FICO_score(loans_data)
+    add_interest_rate_below_12(loans_data)
+    add_intercept(loans_data)
+    return loans_data
 
 def get_low_FICO_score(score):
     """
@@ -44,4 +55,21 @@ def add_FICO_score( df ):
     df['FICO.Score'] = map( lambda x: get_low_FICO_score(x), df['FICO.Range'])
 
 
+
+def add_interest_rate_below_12( df ):
+    """
+    Adds a column signifying whether the interest rate is < 12%
+    :param df: a pandas data frame
+    :return:
+    """
+    df['Interest.below12'] = map(lambda x: x < .12, df['Interest.Rate'])
+
+
+def add_intercept( df ):
+    """
+    Adds a column signifying whether the interest rate is < 12%
+    :param df: a pandas data frame
+    :return:
+    """
+    df['Intercept'] = map(lambda x: 1, df['Interest.Rate'])
 
