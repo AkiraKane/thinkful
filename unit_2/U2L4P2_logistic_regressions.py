@@ -37,7 +37,10 @@ loans_data = utils.fetch_and_prep_data_frame()
 # Looks like these two, from the next page:
 ind_vars = ['FICO.Score','Interest.Rate']
 
+
 logit = sm.Logit(loans_data['Interest.below12'], loans_data[ind_vars])
 result = logit.fit()
-coeff = result.params
+coeff = result.params.values
+
+
 print coeff
