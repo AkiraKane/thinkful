@@ -30,6 +30,7 @@ def calculate_probability(credit_score, loan_amount, logit):
     '''
     fitted = logit.fit()
     coeff = fitted.params.values
+    print coeff
 
     # JR: My coeff didn't match the example in U2L4P3 step 4 - no intercept given, just coefficients
     # Couldn't find any documentation
