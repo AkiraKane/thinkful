@@ -1,10 +1,13 @@
 # Linear Regression Analysis
 # https://courses.thinkful.com/data-001v2/project/2.3.3
+# Challenge: follow along with the example
 
-import numpy as np
-import statsmodels.api as sm
+# 5.18 - Revised to follow SF's 3_LinearRegression_pandas_formula.py
+
+from matplotlib import pyplot as plt
 import lending_club_utils as utils
-
+import pandas as pd
+import statsmodels.formula.api as smf
 
 # load and scrub
 loans_data = utils.fetch_data_frame()
@@ -12,28 +15,24 @@ utils.add_FICO_score(loans_data)
 utils.scrub_interest_rate(loans_data)
 
 # Calculate our model
-interest_rate = loans_data['Interest.Rate']
-loan_amount = loans_data['Amount.Requested']
-fico = loans_data['FICO.Score']
+data = {'interest_rate':loans_data['Interest.Rate'],
+        'fico': loans_data['FICO.Score']}
 
-y = np.matrix(interest_rate).transpose()
-x1 = np.matrix(fico).transpose()
-x2 = np.matrix(loan_amount).transpose()
-
-x = np.column_stack([x1, x2])
-
-all_X = sm.add_constant(x)
-model = sm.OLS(y, all_X)
-f = model.fit()
-
-# JR - interesting - my results came back in a different order
-# than the example in the tutorial.
-# Googled for the library, and it looks like params() returns a variable, unordered list
-# of .. ? ... magic numbers.
-# Sent a bug report to Thinkful.
+df = pd.DataFrame(data)
 
 
-print 'Coefficients: ', f.params[0:2]
-print 'Intercept: ', f.params[2]
-print 'P-Values: ', f.pvalues
-print 'R-Squared: ', f.rsquared
+# Plot the data: shows a relationship of low FICO -> high interest rate
+plt.plot(df["fico"], df["interest_rate"], 's', label="Interest Rate Awarded")
+plt.xlabel("FICO score")
+plt.ylabel("Interest Rate")
+plt.legend(loc="upper left", fontsize=10, numpoints=1)
+plt.show()
+
+
+# Ordinary Least Squares = Linear Regression
+model = smf.ols(formula="interest_rate ~ fico", data=df)
+fitted_model = model.fit()
+coeffs = fitted_model.params
+print fitted_model.summary()
+print "The model obtained is y = {0} + {1}*x".format(*coeffs)
+print coeffs
