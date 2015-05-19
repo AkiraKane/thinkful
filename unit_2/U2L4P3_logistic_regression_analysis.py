@@ -1,4 +1,6 @@
 # -*- coding: UTF-8 -*-
+# Logistic Regression Analysis
+# https://courses.thinkful.com/data-001v2/project/2.4.3
 
 import numpy as np
 import math
@@ -13,7 +15,7 @@ def generate_model(loans_data):
     :param loans_data: a dataframe with loans data and required fields
     :return: a logistic model
     '''
-    ind_vars = ['FICO.Score','Interest.Rate']
+    ind_vars = ['FICO.Score','Amount.Requested']
     logit = sm.Logit(loans_data['Interest.below12'], loans_data[ind_vars])
     # p(x) = 1/(1 + e^(intercept + 0.087423(FicoScore) − 0.000174(LoanAmount))
 
@@ -70,3 +72,17 @@ print template % (loan_granted(credit_score, loan_amount, logit), credit_score, 
 credit_score = 250
 loan_amount = 100000000000
 print template % (loan_granted(credit_score, loan_amount, logit), credit_score, loan_amount)
+
+
+# SF says: Plot your data
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+colors = ["r" if bool(ib12) else "b" for ib12 in loans_data['Interest.below12'] ]
+ax.scatter(loans_data['FICO.Score'], loans_data['Amount.Requested'],  loans_data['Interest.below12'],
+           c=colors)
+ax.set_xlabel('FICO SCORE')
+ax.set_ylabel('Amount.Requested')
+ax.set_zlabel('InterestBelow12')
+plt.show()
