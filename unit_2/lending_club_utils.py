@@ -36,6 +36,7 @@ def fetch_large_dataset():
     loans_data = fetch_data_frame('LoanStats3c.csv')
     scrub_interest_rate(loans_data, 'int_rate')
     add_home_ownership(loans_data)
+    add_approved(loans_data)
     return loans_data
 
 def add_home_ownership( df ):
@@ -45,6 +46,15 @@ def add_home_ownership( df ):
     :return:
     """
     df['owns'] = map( lambda x: x != 'RENT', df['home_ownership'])
+
+def add_approved( df ):
+    """
+    scrub the home_ownership field into a simplified boolean column
+    :param df: a pandas data frame
+    :return:
+    """
+    df['approved'] = map( lambda x: x > 0, df['funded_amnt'])
+
 
 
 def get_low_FICO_score(score):

@@ -1,3 +1,7 @@
+#Link https://courses.thinkful.com/data-001v2/project/2.1.1
+# JR: Already got comments, I believe
+
+
 import pandas as pd
 from scipy import stats
 
