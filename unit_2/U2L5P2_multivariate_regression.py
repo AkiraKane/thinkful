@@ -10,107 +10,107 @@ Does that affect the significance of the coefficients in the original model?
 How does this impact the new model?
 '''
 
-import lending_club_utils as utils
+# Mimicking the approach in "Multiple Regression using Statsmodels" at
+# http://nbviewer.ipython.org/urls/s3.amazonaws.com/datarobotblog/notebooks/multiple_regression_in_python.ipynb#appendix
 
-import numpy as np
-import pandas as pd
-import statsmodels.api as sm
+import lending_club_utils as utils
+from matplotlib import pyplot as plt
+import statsmodels.formula.api as smf # This is different #
 
 loan_data = utils.fetch_large_dataset()
+# Fields
 
-# annual_inc
-# home_ownership
-# int_rate
-# int_rate  = b + m (annual_inc)
-# int_rate  = b + m (annual_inc) + n(home_ownership)
-#  turned home_ownership into a 0 (RENT) or 1 ( MORTGAGE || OWN )
-
-
-interest = loan_data['int_rate']
 income = loan_data['annual_inc']
-homeowner = loan_data['owns']
 
-# Following the process and  naming conventions
-#from the linear regression lesson, https://courses.thinkful.com/data-001v2/project/2.3.3
+#scrubbed to a decimal
+interest = loan_data['int_rate']
 
-y = np.matrix(interest).transpose()
-x1 = np.matrix(income).transpose()
-x2 = np.matrix(homeowner).transpose()
+# scrubbed: 1 = 'RENT', 2='MORTGAGE', 3='OWNS'
+owns = loan_data['owns']
 
-# 2.3.3: "Now you want to put the two columns together to create an input matrix (with one column for each independent variable):"
-#x = np.column_stack([x1, x2])
-x = np.column_stack([x1, x2])
 
-# 2.3.3: "Now we create a linear model:"
-X = sm.add_constant(x)
-model = sm.OLS(y,X)
-f = model.fit()
+# With two variables:
+# int_rate  = b + m (annual_inc)
+model = smf.ols(formula="interest ~ income", data=loan_data)
+fitted_model = model.fit()
+coeffs = fitted_model.params
+print fitted_model.summary()
+print "\n\nThe model obtained is y = {0} + {1}*x1".format(*coeffs)
+print coeffs
+print '\n\n\n'
 
-print f.summary()
+# This graph doesn't show a clear trend between income and interest rate
+# There aren't many loans for incomes
+plt.scatter(loan_data.annual_inc, loan_data.int_rate, s=10, alpha=0.3)
+plt.xlabel("income")
+plt.ylabel("interest rate")
+plt.show()
 
-'''
-Results from using x1 only in np.column_stack
-/Users/me/anaconda/bin/python /Users/me/workspace/thinkful/unit_2/U2L5P2_multivariate_regression.py
-                            OLS Regression Results
-==============================================================================
-Dep. Variable:                      y   R-squared:                       0.003
-Model:                            OLS   Adj. R-squared:                  0.002
-Method:                 Least Squares   F-statistic:                     1.975
-Date:                Sun, 10 May 2015   Prob (F-statistic):              0.160
-Time:                        16:59:40   Log-Likelihood:                 1235.2
-No. Observations:                 636   AIC:                            -2466.
-Df Residuals:                     634   BIC:                            -2457.
-Df Model:                           1
-Covariance Type:            nonrobust
-==============================================================================
-                 coef    std err          t      P>|t|      [95.0% Conf. Int.]
-------------------------------------------------------------------------------
-const          0.1470      0.002     58.810      0.000         0.142     0.152
-x1          3.869e-08   2.75e-08      1.406      0.160     -1.54e-08  9.28e-08
-==============================================================================
-Omnibus:                       53.123   Durbin-Watson:                   1.970
-Prob(Omnibus):                  0.000   Jarque-Bera (JB):               66.941
-Skew:                           0.696   Prob(JB):                     2.91e-15
-Kurtosis:                       3.766   Cond. No.                     1.65e+05
-==============================================================================
 
-Warnings:
-[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
-[2] The condition number is large, 1.65e+05. This might indicate that there are
-strong multicollinearity or other numerical problems.
 
-'''
-'''
-And here with x1 and x2 both:
+# Three variables: int_rate  = b + m (annual_inc) + n(home_ownership)
 
-/Users/me/anaconda/bin/python /Users/me/workspace/thinkful/unit_2/U2L5P2_multivariate_regression.py
-                            OLS Regression Results
-==============================================================================
-Dep. Variable:                      y   R-squared:                       0.008
-Model:                            OLS   Adj. R-squared:                  0.005
-Method:                 Least Squares   F-statistic:                     2.461
-Date:                Sun, 10 May 2015   Prob (F-statistic):             0.0861
-Time:                        17:00:43   Log-Likelihood:                 1236.7
-No. Observations:                 636   AIC:                            -2467.
-Df Residuals:                     633   BIC:                            -2454.
-Df Model:                           2
-Covariance Type:            nonrobust
-==============================================================================
-                 coef    std err          t      P>|t|      [95.0% Conf. Int.]
-------------------------------------------------------------------------------
-const          0.1495      0.003     51.685      0.000         0.144     0.155
-x1          4.473e-08   2.77e-08      1.614      0.107     -9.69e-09  9.91e-08
-x2            -0.0049      0.003     -1.715      0.087        -0.010     0.001
-==============================================================================
-Omnibus:                       49.519   Durbin-Watson:                   1.965
-Prob(Omnibus):                  0.000   Jarque-Bera (JB):               61.372
-Skew:                           0.668   Prob(JB):                     4.71e-14
-Kurtosis:                       3.728   Cond. No.                     2.32e+05
-==============================================================================
+model = smf.ols(formula="interest ~ income + owns", data=loan_data)
+fitted_model = model.fit()
+coeffs = fitted_model.params
+print fitted_model.summary()
+print "\n\nThe model obtained is y = {0} + {1}*income + {2}*owns".format(*coeffs)
+print coeffs
 
-Warnings:
-[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
-[2] The condition number is large, 2.32e+05. This might indicate that there are
-strong multicollinearity or other numerical problems.
+
+# Plot the data. What type is it? What should we expect from it?
+# From SF's multivariate example:
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter(loan_data['annual_inc'], loan_data['owns'],  loan_data['int_rate'], "y measured")
+ax.set_xlabel('annual_inc')
+ax.set_ylabel('owns')
+ax.set_zlabel('int_rate')
+plt.legend(loc="upper left", fontsize=10, numpoints=1)
+plt.show()
+
+
+# Still doesn't show a clear relationship.
+# There are a few unusually high incomes that make the graph harder to read
+# 29 loan applicants ( ~.01%) are millionaires
 
 '''
+In [6]: df['annual_inc'].describe()
+Out[6]:
+count     235629.000000
+mean       74854.148281
+std        55547.533374
+min         3000.000000
+25%        45377.000000
+50%        65000.000000
+75%        90000.000000
+max      7500000.000000
+Name: annual_inc, dtype: float64
+'''
+
+'''
+In [7]: non_millionaires = df['annual_inc'].where(df['annual_inc'] < 1000000)
+
+In [8]: non_millionaires.describe()
+Out[8]:
+count    235600.000000
+mean      74624.052887
+std       47682.688837
+min        3000.000000
+25%       45360.000000
+50%       65000.000000
+75%       90000.000000
+max      999999.000000
+Name: annual_inc, dtype: float64
+
+'''
+
+'''
+# Curious - does the interest rate go up with the size of the loan?
+# No clear relationship - there's a wide variety
+plt.scatter(loan_data.funded_amnt, loan_data.int_rate, s=10, alpha=0.3)
+plt.xlabel("funded")
+plt.ylabel("interest rate")
+plt.show()
+'''
+
