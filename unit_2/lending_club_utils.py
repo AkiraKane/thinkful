@@ -39,13 +39,29 @@ def fetch_large_dataset():
     add_approved(loans_data)
     return loans_data
 
+def fetch_timeseries_dataset():
+    """
+    Load the full lending club data set and scrub it
+    :return: a pandas data frame
+    """
+    loans_data = fetch_data_frame('LoanStats3b.csv')
+    #scrub_interest_rate(loans_data, 'int_rate')
+
+    loans_data['issue_d_format'] = pd.to_datetime(loans_data['issue_d'])
+
+
+    return loans_data
+
+
 def add_home_ownership( df ):
     """
     scrub the home_ownership field into a simplified boolean column
     :param df: a pandas data frame
     :return:
     """
-    df['owns'] = map( lambda x: x != 'RENT', df['home_ownership'])
+    df['owns'] = map( lambda x: 0 if x == 'RENT' else (1 if x == 'MORTGAGE' else 2), df['home_ownership'])
+    #df['owns'] = map( lambda x: 1 if x == 'OWN' else 0, df['home_ownership'])
+
 
 def add_approved( df ):
     """
