@@ -6,9 +6,10 @@ import requests
 import sqlite3 as lite
 import pandas as pd
 import datetime
+import forecast_io as forecast
 
 
-cities = {"Atlanta": (33.762909,-84.422675),
+CITIES = {"Atlanta": (33.762909,-84.422675),
           "Austin": (30.303936,-97.754355),
           "Boston": (42.331960,-71.020173),
           "Chicago": (41.837551,-87.681844),
@@ -17,30 +18,42 @@ cities = {"Atlanta": (33.762909,-84.422675),
 
 DATA_DIR="./data/"
 
+# *============= DATA MUNGING =========* #
 
-def init():
-    pass
+## load the last 30 days of data.
+## See note in __main__ at bottom about how boston_last_30.json was assembled
+def load_30_days():
+    datafile = DATA_DIR + "/boston_last_30.json"
+    with open(datafile) as json_src:
+        content = json.load(json_src)
+        return content
 
-# *========= FORECAST.IO ===========* #
-
-def load_api_key():
-    with open('forecastio_api.key', 'r') as fp:
-        key = (fp.readline()).strip()
-    return key
-
-def request_data(lat_lon, timestamp):
-    server = 'https://api.forecast.io/forecast'
-    key = load_api_key()
-
-    url = '%s/%s/%f,%f,%d' % (server, key, lat_lon[0], lat_lon[1],timestamp)
-    r = requests.get(url)
-    if r.status_code != 200:
-        print ("WARNING: received a status code of ", r.status_code, " from ", url)
-        return {}
-    return r.json()
+def read_daily_json(content):
+    for item in content:
+        yield item['daily']['data'][0]
 
 
-# *================ DATA CACHE ========* #
+
+def extract_daily_from_json(content):
+    dailies = []
+    for item in content:
+        i = item['daily']['data'][0]
+        #i['date']= datetime.datetime.fromtimestamp(
+        #        int(i['apparentTemperatureMinTime'])
+        #    ).strftime('%Y-%m-%d')
+        dailies.extend(item['daily']['data'])
+    return pd.DataFrame(dailies)
+
+
+def extract_hourly_from_json(content):
+    hourlies = []
+    for item in content:
+        hourlies.extend(item['hourly']['data'])
+    hourly_df = pd.DataFrame(hourlies)
+    return hourly_df
+
+
+# *================ CACHED DATA ========* #
 
 def cache_filepath(lat_lon, timestamp):
     return DATA_DIR + "%f,%f,%d.json" % (lat_lon[0], lat_lon[1], timestamp)
@@ -66,7 +79,6 @@ def write_to_cache(obj, lat_lon, timestamp):
 
 def get_unix_timestamp(offset):
     when = datetime.datetime.utcnow()
-    #if offset > 0:
     when = when - datetime.timedelta(days=offset,
                                      hours=when.hour,
                                      minutes=when.minute,
@@ -81,7 +93,7 @@ def fetch_weather_data(lat_lon, offset):
     obj = get_cached_response(lat_lon, timestamp)
     if not obj:
         print "Fetching data the hard way"
-        obj = request_data(lat_lon, timestamp)
+        obj = forecast.request_data(lat_lon, timestamp)
         write_to_cache(obj, lat_lon, timestamp)
     return obj
 
@@ -89,105 +101,23 @@ def fetch_weather_data(lat_lon, offset):
 
 def populate_30_days():
     for days_past in range(0,30):
-        data = fetch_weather_data(cities['Boston'], days_past)
-        #add max_temp to database
-
-
-#* ============= DATABASE ==================* #
-
-db_name = 'weather.db'
-
-def db_connect():
-    '''
-    Connect to our database.
-    :return: a connection
-    '''
-
-    return lite.connect(db_name)
-
-
-def create_tables(con):
-    '''
-    One-time table creation
-    :param con: a database connection
-    :return: None
-    '''
-    with con:
-        con.cursor().execute('CREATE TABLE cities '\
-                             '(id INT PRIMARY KEY, '\
-                             'city TEXT,  '\
-                             'latitude NUMERIC, '\
-                             'longitude NUMERIC)')
-
-        con.cursor().execute('CREATE TABLE temperature '\
-                             '(id INT PRIMARY KEY, '\
-                             'timestamp INT, '\
-                             'max INT, '\
-                             'min INT,'
-                             'city TEXT )')
-
-
-def insert_data(city, timestamp, max, min, con):
-    '''
-    Load our station profile table
-    :param data: a list of station profile dictionaries
-    :param con: database connection
-    :return:
-    '''
-    sql = 'INSERT INTO temperature ( city, timestamp, max, min) ' \
-          'VALUES (?,?,?,?)'
-
-
-    #populate values in the database
-    with con:
-        cur = con.cursor()
-        cur.execute(sql,(city, timestamp, max, min))
-
-def load_daily_from_json(content):
-    dailies = []
-    for item in content:
-        i = item['daily']['data'][0]
-        #i['date']= datetime.datetime.fromtimestamp(
-        #        int(i['apparentTemperatureMinTime'])
-        #    ).strftime('%Y-%m-%d')
-        dailies.extend(item['daily']['data'])
-    return pd.DataFrame(dailies)
-
-
-def load_hourly_from_json(content):
-    hourlies = []
-    for item in content:
-        hourlies.extend(item['hourly']['data'])
-
-
-    hourly_df = pd.DataFrame(hourlies)
-    return hourly_df
-
-
-def load_json():
-    datafile = DATA_DIR + "/boston_last_30.json"
-    with open(datafile) as json_src:
-        #json_string = json_src.read()
-        #content = json.loads(json_string)
-        content = json.load(json_src)
-        return content
+        fetch_weather_data(CITIES['Boston'], days_past)
 
 
 #* ============= MAIN ======================* #
 
 if __name__ == '__main__':
-    #Load
-    #print('Populating data...')
-    #populate_30_days()
-    content = load_json()
-    daily = load_daily_from_json(content)
-    #hourly = load_hourly_from_json(content)
-    #print daily['temperatureMax']
-    #print daily['temperatureMax'].max()
-    s = daily.sort(columns='apparentTemperatureMinTime',ascending=False)
-    print s['temperatureMax'].mean()
-    print s['temperatureMax'].median()
 
-    print s['temperatureMin'].mean()
-    print s['temperatureMin'].median()
+    # Run the file directly to pull down the data files
+    # This happens once, so __main__ is fine.
+    print('Populating data...')
+    populate_30_days()
+
+    # The file boston_last_30.json was compiled manually from the daily json files
+    # From the command line,
+    #       cat 42*json >> boston_last_30.json
+    # followed by correcting the json in emacs, to wit:
+    #    * separating entries with commas
+    #    * enclosing the json with an opening [ and ending ]
+    # Possible in python, but much faster by hand
 
