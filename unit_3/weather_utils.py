@@ -4,6 +4,9 @@ import datetime
 import json
 import requests
 import sqlite3 as lite
+import pandas as pd
+import datetime
+
 
 cities = {"Atlanta": (33.762909,-84.422675),
           "Austin": (30.303936,-97.754355),
@@ -12,11 +15,17 @@ cities = {"Atlanta": (33.762909,-84.422675),
           "Cleveland": (41.478462,-81.679435)
           }
 
+DATA_DIR="./data/"
+
+
+def init():
+    pass
+
 # *========= FORECAST.IO ===========* #
 
 def load_api_key():
     with open('forecastio_api.key', 'r') as fp:
-        key = (fp.readlines()).strip()
+        key = (fp.readline()).strip()
     return key
 
 def request_data(lat_lon, timestamp):
@@ -34,7 +43,7 @@ def request_data(lat_lon, timestamp):
 # *================ DATA CACHE ========* #
 
 def cache_filepath(lat_lon, timestamp):
-    return "./data/%f,%f,%d.json" % (lat_lon[0], lat_lon[1], timestamp)
+    return DATA_DIR + "%f,%f,%d.json" % (lat_lon[0], lat_lon[1], timestamp)
 
 
 def get_cached_response(lat_lon, timestamp):
@@ -132,27 +141,53 @@ def insert_data(city, timestamp, max, min, con):
     #populate values in the database
     with con:
         cur = con.cursor()
-        for resut in data:
-            cur.execute(sql,(city, timestamp, max, min))
+        cur.execute(sql,(city, timestamp, max, min))
+
+def load_daily_from_json(content):
+    dailies = []
+    for item in content:
+        i = item['daily']['data'][0]
+        #i['date']= datetime.datetime.fromtimestamp(
+        #        int(i['apparentTemperatureMinTime'])
+        #    ).strftime('%Y-%m-%d')
+        dailies.extend(item['daily']['data'])
+    return pd.DataFrame(dailies)
 
 
-def fetch_availability_data():
-    con = db_connect()
-
-    # JR a good coder would query the stations table for station name
-    # at report time instead of selecting it on every row.  Oh well.
-    query = 'SELECT a.station_id, a.bikes, a.timestamp, s.stationName ' \
-            'FROM availability a, stations s ' \
-            'WHERE a.station_id = s.id ' \
-            'ORDER BY a.station_id, a.timestamp ASC'
-
-    return pd.read_sql_query(query, con)
+def load_hourly_from_json(content):
+    hourlies = []
+    for item in content:
+        hourlies.extend(item['hourly']['data'])
 
 
+    hourly_df = pd.DataFrame(hourlies)
+    return hourly_df
+
+
+def load_json():
+    datafile = DATA_DIR + "/boston_last_30.json"
+    with open(datafile) as json_src:
+        #json_string = json_src.read()
+        #content = json.loads(json_string)
+        content = json.load(json_src)
+        return content
 
 
 #* ============= MAIN ======================* #
 
 if __name__ == '__main__':
-    print('Populating data...')
-    populate_30_days()
+    #Load
+    #print('Populating data...')
+    #populate_30_days()
+    content = load_json()
+    daily = load_daily_from_json(content)
+    #hourly = load_hourly_from_json(content)
+    #print daily['temperatureMax']
+    #print daily['temperatureMax'].max()
+    s = daily.sort(columns='apparentTemperatureMinTime',ascending=False)
+    print s['temperatureMax'].mean()
+    print s['temperatureMax'].median()
+
+    print s['temperatureMin'].mean()
+    print s['temperatureMin'].median()
+
